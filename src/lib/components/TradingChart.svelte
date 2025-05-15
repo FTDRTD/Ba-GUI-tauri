@@ -191,9 +191,21 @@
         },
         rightPriceScale: {
           borderColor: theme.borderColor,
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+          mode: 0, // 线性价格模式
+          autoScale: true,
+          invertScale: false,
+          alignLabels: true,
+          borderVisible: true,
+          entireTextOnly: false,
+          visible: true,
+          ticksVisible: true,
         },
         leftPriceScale: {
-          borderColor: theme.borderColor,
+          visible: false,
         },
         width: chartContainer.clientWidth,
         height: chartContainer.clientHeight,
@@ -206,6 +218,16 @@
         borderVisible: false,
         wickUpColor: theme.upColor,
         wickDownColor: theme.downColor,
+        priceFormat: {
+          type: 'price',
+          precision: 2,
+          minMove: 0.01,
+        },
+        priceScaleId: 'right',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
       });
 
       // 创建成交量图
@@ -269,16 +291,41 @@
       
       historicalData = data.map((candle: any[]) => ({
         time: candle[0] / 1000,
-        open: parseFloat(candle[1]),
-        high: parseFloat(candle[2]),
-        low: parseFloat(candle[3]),
-        close: parseFloat(candle[4]),
-        volume: parseFloat(candle[5])
+        open: Number(candle[1]),
+        high: Number(candle[2]),
+        low: Number(candle[3]),
+        close: Number(candle[4]),
+        volume: Number(candle[5])
       }));
 
       // 更新图表数据
-      candlestickSeries.setData(historicalData);
+      if (candlestickSeries) {
+        candlestickSeries.setData(historicalData);
+        
+        // 设置价格范围
+        const prices = historicalData.map(d => [d.high, d.low]).flat();
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        const padding = (maxPrice - minPrice) * 0.1; // 添加10%的padding
+        
+        chart.priceScale('right').applyOptions({
+          autoScale: true,
+          mode: 0,
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+        });
+      }
       
+      if (volumeSeries) {
+        volumeSeries.setData(historicalData.map(d => ({
+          time: d.time,
+          value: d.volume,
+          color: d.close >= d.open ? theme.upColor : theme.downColor
+        })));
+      }
+
       // 计算并显示技术指标
       const indicators = calculateIndicators(historicalData);
       displayIndicators(indicators);
@@ -352,20 +399,24 @@
       
       const candleData = {
         time: candle.t / 1000,
-        open: parseFloat(candle.o),
-        high: parseFloat(candle.h),
-        low: parseFloat(candle.l),
-        close: parseFloat(candle.c),
+        open: Number(candle.o),
+        high: Number(candle.h),
+        low: Number(candle.l),
+        close: Number(candle.c),
       };
 
       const volumeData = {
         time: candle.t / 1000,
-        value: parseFloat(candle.v),
-        color: parseFloat(candle.c) >= parseFloat(candle.o) ? '#26a69a' : '#ef5350',
+        value: Number(candle.v),
+        color: Number(candle.c) >= Number(candle.o) ? theme.upColor : theme.downColor,
       };
 
-      candlestickSeries.update(candleData);
-      volumeSeries.update(volumeData);
+      if (candlestickSeries) {
+        candlestickSeries.update(candleData);
+      }
+      if (volumeSeries) {
+        volumeSeries.update(volumeData);
+      }
     };
   }
 
