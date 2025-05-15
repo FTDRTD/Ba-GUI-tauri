@@ -2,6 +2,7 @@
   import TradingChart from '$lib/components/TradingChart.svelte';
   import OrderBook from '$lib/components/OrderBook.svelte';
   import TradingPairs from '$lib/components/TradingPairs.svelte';
+  import TradingSignals from '$lib/components/TradingSignals.svelte';
   import { onMount } from 'svelte';
 
   let selectedSymbol = 'BTCUSDT';
@@ -175,6 +176,7 @@
           bind:selectedPair={selectedSymbol}
           on:pairSelected={handlePairSelected}
         />
+        <TradingSignals />
       {/if}
       <button 
         class="collapse-btn" 

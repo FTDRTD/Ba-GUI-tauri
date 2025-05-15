@@ -3,6 +3,7 @@
   import { createChart, ColorType } from 'lightweight-charts';
   import { RSI, MACD, SMA } from 'technicalindicators';
   import { format } from 'date-fns';
+  import { cacheDB } from '$lib/stores/cache';
 
   export let selectedSymbol: string;
   export let key: number = 0;
@@ -157,6 +158,16 @@
     return theme;
   }
 
+  // 将theme变量移到组件顶部
+  let theme = {
+    upColor: '#26a69a',
+    downColor: '#ef5350',
+    background: '#1E222D',
+    textColor: '#DDD',
+    gridColor: '#2B2B43',
+    borderColor: '#2B2B43'
+  };
+
   // 初始化图表
   function initChart() {
     if (chartContainer) {
@@ -294,56 +305,79 @@
   // 获取历史数据
   async function fetchHistoricalData() {
     try {
-      const response = await fetch(
-        `https://fapi.binance.com/fapi/v1/klines?symbol=${selectedSymbol}&interval=${interval}&limit=1000`
-      );
-      const data = await response.json();
-      
-      historicalData = data.map((candle: any[]) => ({
-        time: candle[0] / 1000,
-        open: Number(candle[1]),
-        high: Number(candle[2]),
-        low: Number(candle[3]),
-        close: Number(candle[4]),
-        volume: Number(candle[5])
-      }));
+      // 尝试从缓存获取数据
+      const endTime = Date.now();
+      const startTime = endTime - (1000 * 60 * 60 * 24 * 7); // 7天前
+      const cachedData = await cacheDB.getKlines(selectedSymbol, interval, startTime, endTime);
 
-      // 更新图表数据
-      if (candlestickSeries) {
-        candlestickSeries.setData(historicalData);
+      if (cachedData && cachedData.length > 0) {
+        // 使用缓存数据
+        historicalData = cachedData;
+        updateChartWithData(historicalData);
+      } else {
+        // 从API获取新数据
+        const response = await fetch(
+          `https://fapi.binance.com/fapi/v1/klines?symbol=${selectedSymbol}&interval=${interval}&limit=1000`
+        );
+        const data = await response.json();
         
-        // 设置价格范围
-        const prices = historicalData.map(d => [d.high, d.low]).flat();
-        const minPrice = Math.min(...prices);
-        const maxPrice = Math.max(...prices);
-        const padding = (maxPrice - minPrice) * 0.1; // 添加10%的padding
-        
-        chart.priceScale('right').applyOptions({
-          autoScale: true,
-          mode: 0,
-          scaleMargins: {
-            top: 0.1,
-            bottom: 0.1,
-          },
-        });
-      }
-      
-      if (volumeSeries) {
-        volumeSeries.setData(historicalData.map(d => ({
-          time: d.time,
-          value: d.volume,
-          color: d.close >= d.open ? theme.upColor : theme.downColor
-        })));
-      }
+        historicalData = data.map((candle: any[]) => ({
+          time: candle[0] / 1000,
+          open: Number(candle[1]),
+          high: Number(candle[2]),
+          low: Number(candle[3]),
+          close: Number(candle[4]),
+          volume: Number(candle[5])
+        }));
 
-      // 计算并显示技术指标
-      const indicators = calculateIndicators(historicalData);
-      displayIndicators(indicators);
+        // 更新图表
+        updateChartWithData(historicalData);
+
+        // 存储到缓存
+        await cacheDB.storeKlines(selectedSymbol, interval, historicalData);
+      }
 
       // 通知父组件数据已更新
       dispatch('update');
     } catch (error) {
       console.error('获取历史数据失败:', error);
+    }
+  }
+
+  // 修改updateChartWithData函数，添加空值检查
+  function updateChartWithData(data: any[]) {
+    if (!data || !chart || !candlestickSeries || !volumeSeries) return;
+
+    candlestickSeries.setData(data);
+    
+    // 设置价格范围
+    const prices = data.map(d => [d.high, d.low]).flat();
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const padding = (maxPrice - minPrice) * 0.1;
+    
+    const priceScale = chart.priceScale('right');
+    if (priceScale) {
+      priceScale.applyOptions({
+        autoScale: true,
+        mode: 0,
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+      });
+    }
+    
+    volumeSeries.setData(data.map(d => ({
+      time: d.time,
+      value: d.volume,
+      color: d.close >= d.open ? theme.upColor : theme.downColor
+    })));
+
+    // 计算并显示技术指标
+    const indicators = calculateIndicators(data);
+    if (indicators) {
+      displayIndicators(indicators);
     }
   }
 
@@ -414,48 +448,32 @@
         high: Number(candle.h),
         low: Number(candle.l),
         close: Number(candle.c),
-      };
-
-      const volumeData = {
-        time: candle.t / 1000,
-        value: Number(candle.v),
-        color: Number(candle.c) >= Number(candle.o) ? '#26a69a' : '#ef5350',
+        volume: Number(candle.v)
       };
 
       // 更新历史数据
-      if (historicalData.length > 0) {
+      if (historicalData && historicalData.length > 0) {
         const lastCandle = historicalData[historicalData.length - 1];
-        if (lastCandle.time === candleData.time) {
+        if (lastCandle && lastCandle.time === candleData.time) {
           // 更新最后一根K线
-          historicalData[historicalData.length - 1] = {
-            ...lastCandle,
-            ...candleData,
-            volume: volumeData.value
-          };
+          historicalData[historicalData.length - 1] = candleData;
         } else {
           // 添加新的K线
-          historicalData.push({
-            ...candleData,
-            volume: volumeData.value
-          });
+          historicalData.push(candleData);
           // 保持数据量在1000根以内
           if (historicalData.length > 1000) {
             historicalData.shift();
           }
         }
-      }
 
-      // 更新图表数据（如果图表存在）
-      if (candlestickSeries && showChart) {
-        candlestickSeries.update(candleData);
-      }
-      if (volumeSeries && showChart) {
-        volumeSeries.update(volumeData);
-      }
+        // 更新图表
+        if (showChart) {
+          updateChartWithData(historicalData);
+        }
 
-      // 更新技术指标
-      const indicators = calculateIndicators(historicalData);
-      displayIndicators(indicators);
+        // 异步更新缓存
+        cacheDB.storeKlines(selectedSymbol, interval, historicalData).catch(console.error);
+      }
     };
 
     ws.onerror = (error) => {
@@ -470,26 +488,28 @@
 
   // Calculate technical indicators
   function calculateIndicators(data: any[]) {
-    const closes = data.map(d => d.close);
+    const prices = data.map(d => d.close);
     
     // RSI
     const rsi = RSI.calculate({
-      values: closes,
-      period: 14,
+      values: prices,
+      period: 14
     });
 
     // MACD
     const macd = MACD.calculate({
-      values: closes,
+      values: prices,
       fastPeriod: 12,
       slowPeriod: 26,
       signalPeriod: 9,
+      SimpleMAOscillator: false,
+      SimpleMASignal: false
     });
 
     // SMA
     const sma = SMA.calculate({
-      values: closes,
-      period: 20,
+      values: prices,
+      period: 20
     });
 
     return { rsi, macd, sma };

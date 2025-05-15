@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { fade, fly, slide } from 'svelte/transition';
+  import { preferences } from '$lib/stores/cache';
   
   export let selectedPair: string = 'BTCUSDT';
   const dispatch = createEventDispatcher();
@@ -114,8 +115,8 @@
     } else {
       favorites.add(symbol);
     }
-    // 保存到本地存储
-    localStorage.setItem('favorites', JSON.stringify(Array.from(favorites)));
+    // 使用preferences store更新收藏列表
+    preferences.updatePreference('favorites', Array.from(favorites));
   }
 
   // 排序函数
@@ -154,15 +155,22 @@
 
   // 加载收藏列表
   onMount(() => {
-    const savedFavorites = localStorage.getItem('favorites');
-    if (savedFavorites) {
-      favorites = new Set(JSON.parse(savedFavorites));
-    }
+    // 从preferences store加载收藏列表
+    const unsubscribe = preferences.subscribe(prefs => {
+      if (prefs.favorites) {
+        favorites = new Set(prefs.favorites);
+      }
+    });
+
     loadData();
     
     // 定期更新数据
     const updateInterval = setInterval(loadData, 10000);
-    return () => clearInterval(updateInterval);
+
+    return () => {
+      unsubscribe();
+      clearInterval(updateInterval);
+    };
   });
 
   // 处理交易对选择

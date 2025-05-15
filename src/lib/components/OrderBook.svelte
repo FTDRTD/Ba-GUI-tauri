@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { format } from 'date-fns';
+  import { cacheDB } from '$lib/stores/cache';
 
   export let selectedSymbol: string;
   export let key: number = 0;
@@ -112,6 +113,9 @@
         ...orderBook.bids.map(([_, q]) => q),
         ...orderBook.asks.map(([_, q]) => q)
       );
+
+      // 异步更新缓存
+      cacheDB.storeOrderBook(selectedSymbol, orderBook).catch(console.error);
     };
   }
 
@@ -143,7 +147,17 @@
 
   async function loadOrderBook() {
     try {
-      // 加载订单簿数据
+      // 尝试从缓存加载数据
+      const cachedOrderBook = await cacheDB.getLatestOrderBook(selectedSymbol);
+      if (cachedOrderBook) {
+        orderBook = cachedOrderBook;
+        maxVolume = Math.max(
+          ...orderBook.bids.map(([_, q]) => q),
+          ...orderBook.asks.map(([_, q]) => q)
+        );
+      }
+
+      // 连接WebSocket获取实时数据
       connectWebSocket();
       
       // 通知父组件数据已更新
