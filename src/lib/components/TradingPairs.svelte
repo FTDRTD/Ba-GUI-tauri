@@ -45,7 +45,7 @@
       const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
       const data = await response.json();
       return data.symbols
-        .filter((symbol: any) => symbol.status === 'TRADING' && symbol.quoteAsset === 'USDT')
+        .filter((symbol: any) => symbol.status === 'TRADING' && symbol.quoteAsset === 'USDT' && symbol.contractType === 'PERPETUAL')
         .map((symbol: any) => ({
           symbol: symbol.symbol,
           baseAsset: symbol.baseAsset,
