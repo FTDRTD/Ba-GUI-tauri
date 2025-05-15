@@ -253,15 +253,24 @@
     const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const updateTheme = () => {
       updateThemeConfig();
-      // 重新初始化图表以应用新主题
       if (chart) {
         chart.remove();
         initChart();
+        // 重新显示数据
+        if (candlestickSeries && volumeSeries) {
+          candlestickSeries.setData(historicalData);
+          volumeSeries.setData(historicalData.map(d => ({
+            time: d.time,
+            value: d.volume,
+            color: d.close >= d.open ? '#26a69a' : '#ef5350'
+          })));
+        }
       }
     };
     darkModeMediaQuery.addEventListener('change', updateTheme);
     updateThemeConfig();
     initChart();
+    connectWebSocket();
 
     // 监听窗口大小变化
     const handleResize = () => {
@@ -277,6 +286,7 @@
     return () => {
       darkModeMediaQuery.removeEventListener('change', updateTheme);
       window.removeEventListener('resize', handleResize);
+      if (ws) ws.close();
       if (chart) chart.remove();
     };
   });
@@ -386,6 +396,7 @@
     })));
   }
 
+  // 修改 WebSocket 连接函数
   function connectWebSocket() {
     if (ws) {
       ws.close();
@@ -408,15 +419,52 @@
       const volumeData = {
         time: candle.t / 1000,
         value: Number(candle.v),
-        color: Number(candle.c) >= Number(candle.o) ? theme.upColor : theme.downColor,
+        color: Number(candle.c) >= Number(candle.o) ? '#26a69a' : '#ef5350',
       };
 
-      if (candlestickSeries) {
+      // 更新历史数据
+      if (historicalData.length > 0) {
+        const lastCandle = historicalData[historicalData.length - 1];
+        if (lastCandle.time === candleData.time) {
+          // 更新最后一根K线
+          historicalData[historicalData.length - 1] = {
+            ...lastCandle,
+            ...candleData,
+            volume: volumeData.value
+          };
+        } else {
+          // 添加新的K线
+          historicalData.push({
+            ...candleData,
+            volume: volumeData.value
+          });
+          // 保持数据量在1000根以内
+          if (historicalData.length > 1000) {
+            historicalData.shift();
+          }
+        }
+      }
+
+      // 更新图表数据（如果图表存在）
+      if (candlestickSeries && showChart) {
         candlestickSeries.update(candleData);
       }
-      if (volumeSeries) {
+      if (volumeSeries && showChart) {
         volumeSeries.update(volumeData);
       }
+
+      // 更新技术指标
+      const indicators = calculateIndicators(historicalData);
+      displayIndicators(indicators);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket错误:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket连接关闭，尝试重新连接...');
+      setTimeout(connectWebSocket, 5000);
     };
   }
 
@@ -447,14 +495,11 @@
     return { rsi, macd, sma };
   }
 
-  // 监听交易对和时间周期变化
+  // 修改监听交易对和时间周期变化
   $: {
     if (selectedSymbol || interval) {
       fetchHistoricalData();
-      if (ws) {
-        ws.close();
-        connectWebSocket();
-      }
+      connectWebSocket();
     }
   }
 
@@ -463,11 +508,31 @@
     // 当交易对改变时重新加载数据
     fetchHistoricalData();
   }
+
+  // 添加图表显示控制
+  let showChart = true;
+  
+  // 修改切换图表显示状态函数
+  function toggleChart() {
+    showChart = !showChart;
+    // 如果重新显示图表，更新最新数据
+    if (showChart && chart && candlestickSeries && volumeSeries) {
+      candlestickSeries.setData(historicalData);
+      volumeSeries.setData(historicalData.map(d => ({
+        time: d.time,
+        value: d.volume,
+        color: d.close >= d.open ? '#26a69a' : '#ef5350'
+      })));
+    }
+  }
 </script>
 
 <div class="trading-chart">
   <div class="chart-header">
     <div class="chart-controls">
+      <button class="toggle-chart" on:click={toggleChart}>
+        {showChart ? '收起图表' : '展开图表'}
+      </button>
       <select bind:value={interval}>
         <option value="1m">1分钟</option>
         <option value="5m">5分钟</option>
@@ -479,7 +544,11 @@
     </div>
   </div>
   <div class="chart-main">
-    <div bind:this={chartContainer} class="chart-container"></div>
+    <div 
+      bind:this={chartContainer} 
+      class="chart-container"
+      class:collapsed={!showChart}
+    ></div>
     <div class="indicators">
       <div class="indicator-group">
         <div class="indicator">
@@ -538,6 +607,22 @@
   .chart-controls {
     display: flex;
     gap: 1rem;
+    align-items: center;
+  }
+
+  .toggle-chart {
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+
+  .toggle-chart:hover {
+    background: var(--hover-color);
   }
 
   .chart-controls select {
@@ -563,6 +648,16 @@
     border-radius: 4px;
     overflow: hidden;
     border: 1px solid var(--border-color);
+    transition: flex 0.3s ease;
+  }
+
+  .chart-container.collapsed {
+    flex: 0;
+    min-height: 0;
+    height: 0;
+    border: none;
+    margin: 0;
+    padding: 0;
   }
 
   .indicators {
@@ -627,6 +722,15 @@
   }
 
   @media (max-width: 768px) {
+    .chart-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .toggle-chart {
+      width: 100%;
+    }
+
     .indicators {
       flex-direction: column;
     }
