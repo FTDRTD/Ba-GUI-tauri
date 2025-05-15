@@ -24,6 +24,34 @@
   function updateTheme(e: MediaQueryListEvent | MediaQueryList) {
     isDarkMode = e.matches;
     document.documentElement.classList.toggle('light-mode', !isDarkMode);
+    // 更新 CSS 变量
+    updateThemeVariables(isDarkMode);
+  }
+
+  // 更新主题变量
+  function updateThemeVariables(isDark: boolean) {
+    const root = document.documentElement;
+    if (isDark) {
+      root.style.setProperty('--bg-primary', '#0A0E17');
+      root.style.setProperty('--bg-secondary', '#1A1F2E');
+      root.style.setProperty('--border-color', '#2A2F3E');
+      root.style.setProperty('--text-primary', '#E5E5E5');
+      root.style.setProperty('--text-secondary', '#9E9E9E');
+      root.style.setProperty('--accent-color', '#2962FF');
+      root.style.setProperty('--hover-color', '#3A3F4E');
+      root.style.setProperty('--success-color', '#1B5E20');
+      root.style.setProperty('--panel-bg', '#1A1F2E');
+    } else {
+      root.style.setProperty('--bg-primary', '#FFFFFF');
+      root.style.setProperty('--bg-secondary', '#F5F5F5');
+      root.style.setProperty('--border-color', '#E0E0E0');
+      root.style.setProperty('--text-primary', '#1A1A1A');
+      root.style.setProperty('--text-secondary', '#666666');
+      root.style.setProperty('--accent-color', '#1976D2');
+      root.style.setProperty('--hover-color', '#E8E8E8');
+      root.style.setProperty('--success-color', '#2E7D32');
+      root.style.setProperty('--panel-bg', '#FFFFFF');
+    }
   }
 
   // 处理交易对选择
@@ -110,6 +138,17 @@
       --hover-color: #E8E8E8;
       --success-color: #2E7D32;
       --panel-bg: #FFFFFF;
+    }
+
+    :global(body) {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    :global(*) {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
     }
   </style>
 </svelte:head>
@@ -216,11 +255,13 @@
     font-size: 0.875rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
+    color: var(--text-primary);
   }
 
   .status-indicator.connected {
     background: var(--success-color);
     border-color: var(--success-color);
+    color: white;
   }
 
   .last-update {
@@ -232,6 +273,7 @@
     margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
+    color: var(--text-primary);
   }
 
   main {
@@ -241,6 +283,7 @@
     padding: 0.5rem;
     overflow: hidden;
     position: relative;
+    background: var(--bg-primary);
   }
 
   .left-panel, .right-panel {
@@ -302,11 +345,6 @@
 
   .resize-handle:hover {
     background: var(--hover-color);
-  }
-
-  :global(body) {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   }
 
   @media (max-width: 1200px) {

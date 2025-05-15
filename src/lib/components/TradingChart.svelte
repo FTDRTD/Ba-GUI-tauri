@@ -64,26 +64,198 @@
           vertLines: { color: theme.gridColor },
           horzLines: { color: theme.gridColor },
         },
+        crosshair: {
+          mode: 1,
+          vertLine: {
+            color: theme.textColor,
+            style: 1,
+            width: 1,
+          },
+          horzLine: {
+            color: theme.textColor,
+            style: 1,
+            width: 1,
+          },
+        },
+        timeScale: {
+          borderColor: theme.borderColor,
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        rightPriceScale: {
+          borderColor: theme.borderColor,
+        },
+        leftPriceScale: {
+          borderColor: theme.borderColor,
+        },
       });
 
       // 更新图表容器背景
       if (chartContainer) {
         chartContainer.style.background = theme.background;
       }
+
+      // 更新K线图样式
+      if (candlestickSeries) {
+        candlestickSeries.applyOptions({
+          upColor: theme.upColor,
+          downColor: theme.downColor,
+          borderVisible: false,
+          wickUpColor: theme.upColor,
+          wickDownColor: theme.downColor,
+        });
+      }
+
+      // 更新成交量图样式
+      if (volumeSeries) {
+        volumeSeries.applyOptions({
+          color: theme.upColor,
+          priceFormat: {
+            type: 'volume',
+          },
+          priceScaleId: '',
+          scaleMargins: {
+            top: 0.8,
+            bottom: 0,
+          },
+        });
+      }
+
+      // 更新技术指标样式
+      if (rsiSeries) {
+        rsiSeries.applyOptions({
+          color: '#FF9800',
+          lineWidth: 2,
+          priceScaleId: 'right',
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+        });
+      }
+
+      if (macdSeries) {
+        macdSeries.applyOptions({
+          color: '#2196F3',
+          lineWidth: 2,
+          priceScaleId: 'right',
+          scaleMargins: {
+            top: 0.2,
+            bottom: 0.2,
+          },
+        });
+      }
+
+      if (smaSeries) {
+        smaSeries.applyOptions({
+          color: '#4CAF50',
+          lineWidth: 2,
+        });
+      }
     }
 
     return theme;
   }
 
+  // 初始化图表
+  function initChart() {
+    if (chartContainer) {
+      const theme = updateThemeConfig();
+      
+      chart = createChart(chartContainer, {
+        layout: {
+          background: { type: ColorType.Solid, color: theme.background },
+          textColor: theme.textColor,
+        },
+        grid: {
+          vertLines: { color: theme.gridColor },
+          horzLines: { color: theme.gridColor },
+        },
+        crosshair: {
+          mode: 1,
+          vertLine: {
+            color: theme.textColor,
+            style: 1,
+            width: 1,
+          },
+          horzLine: {
+            color: theme.textColor,
+            style: 1,
+            width: 1,
+          },
+        },
+        timeScale: {
+          borderColor: theme.borderColor,
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        rightPriceScale: {
+          borderColor: theme.borderColor,
+        },
+        leftPriceScale: {
+          borderColor: theme.borderColor,
+        },
+        width: chartContainer.clientWidth,
+        height: chartContainer.clientHeight,
+      });
+
+      // 创建K线图
+      candlestickSeries = chart.addCandlestickSeries({
+        upColor: theme.upColor,
+        downColor: theme.downColor,
+        borderVisible: false,
+        wickUpColor: theme.upColor,
+        wickDownColor: theme.downColor,
+      });
+
+      // 创建成交量图
+      volumeSeries = chart.addHistogramSeries({
+        color: theme.upColor,
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: '',
+        scaleMargins: {
+          top: 0.8,
+          bottom: 0,
+        },
+      });
+
+      // 获取历史数据
+      fetchHistoricalData();
+    }
+  }
+
   // 监听主题变化
   onMount(() => {
     const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const updateTheme = () => updateThemeConfig();
+    const updateTheme = () => {
+      updateThemeConfig();
+      // 重新初始化图表以应用新主题
+      if (chart) {
+        chart.remove();
+        initChart();
+      }
+    };
     darkModeMediaQuery.addEventListener('change', updateTheme);
     updateThemeConfig();
+    initChart();
+
+    // 监听窗口大小变化
+    const handleResize = () => {
+      if (chart && chartContainer) {
+        chart.applyOptions({
+          width: chartContainer.clientWidth,
+          height: chartContainer.clientHeight,
+        });
+      }
+    };
+    window.addEventListener('resize', handleResize);
 
     return () => {
       darkModeMediaQuery.removeEventListener('change', updateTheme);
+      window.removeEventListener('resize', handleResize);
+      if (chart) chart.remove();
     };
   });
 
@@ -166,43 +338,6 @@
       value: value
     })));
   }
-
-  // Initialize chart
-  onMount(async () => {
-    chart = createChart(chartContainer, chartConfig);
-    
-    // Create series
-    candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#26a69a',
-      downColor: '#ef5350',
-      borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
-    });
-
-    volumeSeries = chart.addHistogramSeries({
-      color: '#26a69a',
-      priceFormat: {
-        type: 'volume',
-      },
-      priceScaleId: '',
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
-    });
-
-    // 获取历史数据
-    await fetchHistoricalData();
-
-    // Connect to Binance WebSocket
-    connectWebSocket();
-
-    return () => {
-      if (ws) ws.close();
-      if (chart) chart.remove();
-    };
-  });
 
   function connectWebSocket() {
     if (ws) {
@@ -291,36 +426,42 @@
         <option value="1d">1天</option>
       </select>
     </div>
+  </div>
+  <div class="chart-main">
+    <div bind:this={chartContainer} class="chart-container"></div>
     <div class="indicators">
-      <div class="indicator">
-        <h4>RSI (14)</h4>
-        <div class="value {historicalData.length > 0 ? (calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] > 70 ? 'overbought' : calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] < 30 ? 'oversold' : '') : ''}">
-          {historicalData.length > 0 ? calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1].toFixed(2) : '-'}
+      <div class="indicator-group">
+        <div class="indicator">
+          <h4>RSI (14)</h4>
+          <div class="value {historicalData.length > 0 ? (calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] > 70 ? 'overbought' : calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] < 30 ? 'oversold' : '') : ''}">
+            {historicalData.length > 0 ? calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1].toFixed(2) : '-'}
+          </div>
         </div>
-      </div>
-      <div class="indicator">
-        <h4>MACD</h4>
-        <div class="macd-values">
+        <div class="indicator">
+          <h4>SMA (20)</h4>
           <div class="value">
-            MACD: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.MACD.toFixed(2) || '-' : '-'}
-          </div>
-          <div class="value">
-            Signal: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.signal.toFixed(2) || '-' : '-'}
-          </div>
-          <div class="value">
-            Hist: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.histogram.toFixed(2) || '-' : '-'}
+            {historicalData.length > 0 ? calculateIndicators(historicalData).sma[calculateIndicators(historicalData).sma.length - 1].toFixed(2) : '-'}
           </div>
         </div>
       </div>
-      <div class="indicator">
-        <h4>SMA (20)</h4>
-        <div class="value">
-          {historicalData.length > 0 ? calculateIndicators(historicalData).sma[calculateIndicators(historicalData).sma.length - 1].toFixed(2) : '-'}
+      <div class="indicator-group">
+        <div class="indicator">
+          <h4>MACD</h4>
+          <div class="macd-values">
+            <div class="value">
+              MACD: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.MACD.toFixed(2) || '-' : '-'}
+            </div>
+            <div class="value">
+              Signal: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.signal.toFixed(2) || '-' : '-'}
+            </div>
+            <div class="value">
+              Hist: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.histogram.toFixed(2) || '-' : '-'}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-  <div bind:this={chartContainer} class="chart-container"></div>
 </div>
 
 <style>
@@ -337,10 +478,9 @@
 
   .chart-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-    padding-bottom: 1rem;
+    justify-content: flex-start;
+    align-items: center;
+    padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
   }
 
@@ -358,20 +498,41 @@
     font-size: 0.9rem;
   }
 
+  .chart-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
   .chart-container {
     flex: 1;
     min-height: 0;
     border-radius: 4px;
     overflow: hidden;
+    border: 1px solid var(--border-color);
   }
 
   .indicators {
     display: flex;
-    gap: 2rem;
-    padding: 0.75rem 1rem;
+    gap: 1rem;
+    padding: 0.75rem;
     background: var(--bg-secondary);
     border-radius: 4px;
     border: 1px solid var(--border-color);
+  }
+
+  .indicator-group {
+    flex: 1;
+    display: flex;
+    gap: 2rem;
+    padding: 0 1rem;
+    border-right: 1px solid var(--border-color);
+  }
+
+  .indicator-group:last-child {
+    border-right: none;
   }
 
   .indicator {
@@ -388,20 +549,26 @@
     font-family: monospace;
     font-size: 1.1rem;
     color: var(--text-primary);
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-primary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
   }
 
   .value.overbought {
     color: #ef5350;
+    border-color: #ef5350;
   }
 
   .value.oversold {
     color: #26a69a;
+    border-color: #26a69a;
   }
 
   .macd-values {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.5rem;
   }
 
   .macd-values .value {
@@ -409,13 +576,22 @@
   }
 
   @media (max-width: 768px) {
-    .chart-header {
+    .indicators {
       flex-direction: column;
     }
 
-    .indicators {
+    .indicator-group {
       flex-direction: column;
       gap: 1rem;
+      padding: 0;
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+
+    .indicator-group:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
     }
 
     .indicator {
