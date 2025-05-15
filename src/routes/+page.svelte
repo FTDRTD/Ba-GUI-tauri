@@ -18,12 +18,12 @@
     
     <div class="center-panel">
       <TradingChart {selectedSymbol} />
-    </div>
+  </div>
     
     <div class="right-panel">
       <OrderBook {selectedSymbol} />
     </div>
-  </main>
+</main>
 </div>
 
 <style>
@@ -32,20 +32,20 @@
     height: 100vh;
     background: #1E222D;
     color: #DDD;
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
   }
 
   header {
     padding: 1rem;
     background: #2B2B43;
     border-bottom: 1px solid #3F3F5F;
-  }
+}
 
   h1 {
     margin: 0;
     font-size: 1.5rem;
-  }
+}
 
   main {
     flex: 1;
@@ -53,7 +53,7 @@
     gap: 1rem;
     padding: 1rem;
     overflow: hidden;
-  }
+}
 
   .left-panel {
     width: 300px;
@@ -71,7 +71,7 @@
     border: 1px solid #3F3F5F;
     border-radius: 4px;
     overflow: hidden;
-  }
+}
 
   .right-panel {
     width: 300px;
