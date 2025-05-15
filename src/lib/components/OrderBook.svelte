@@ -21,6 +21,57 @@
     isDarkMode = isDark;
   }
 
+  // 添加大户数据相关变量
+  let longShortPositionRatio: any = null;
+  let longShortAccountRatio: any = null;
+  let ratioUpdateTime: number = 0;
+  let ratioPeriod = '1h'; // 默认1小时周期
+
+  // 获取大户持仓量多空比
+  async function fetchLongShortPositionRatio() {
+    try {
+      const response = await fetch(
+        `https://fapi.binance.com/futures/data/topLongShortPositionRatio?symbol=${selectedSymbol}&period=${ratioPeriod}&limit=1`
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        longShortPositionRatio = data[0];
+        ratioUpdateTime = Date.now();
+      }
+    } catch (err) {
+      console.error('获取大户持仓量多空比失败:', err);
+    }
+  }
+
+  // 获取大户账户数多空比
+  async function fetchLongShortAccountRatio() {
+    try {
+      const response = await fetch(
+        `https://fapi.binance.com/futures/data/topLongShortAccountRatio?symbol=${selectedSymbol}&period=${ratioPeriod}&limit=1`
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        longShortAccountRatio = data[0];
+        ratioUpdateTime = Date.now();
+      }
+    } catch (err) {
+      console.error('获取大户账户数多空比失败:', err);
+    }
+  }
+
+  // 更新大户数据
+  async function updateRatioData() {
+    await Promise.all([
+      fetchLongShortPositionRatio(),
+      fetchLongShortAccountRatio()
+    ]);
+  }
+
+  // 监听交易对变化时更新大户数据
+  $: if (selectedSymbol) {
+    updateRatioData();
+  }
+
   // 监听主题变化
   onMount(() => {
     const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -30,9 +81,15 @@
 
     connectWebSocket();
     loadOrderBook();
+    updateRatioData();
+
+    // 添加大户数据定时更新
+    const ratioUpdateInterval = setInterval(updateRatioData, 60000); // 每分钟更新一次
+    
     return () => {
       if (ws) ws.close();
       darkModeMediaQuery.removeEventListener('change', updateTheme);
+      clearInterval(ratioUpdateInterval);
     };
   });
 
@@ -103,6 +160,65 @@
     <button on:click={toggleViewMode} class="view-toggle">
       {viewMode === 'list' ? '可视化视图' : '列表视图'}
     </button>
+  </div>
+
+  <!-- 添加大户数据展示区域 -->
+  <div class="ratio-data">
+    <div class="ratio-group">
+      <div class="ratio-title">大户持仓量多空比</div>
+      {#if longShortPositionRatio}
+        <div class="ratio-content">
+          <div class="ratio-item">
+            <span class="label">多空比:</span>
+            <span class="value {parseFloat(longShortPositionRatio.longShortRatio) > 1 ? 'long' : 'short'}">
+              {parseFloat(longShortPositionRatio.longShortRatio).toFixed(4)}
+            </span>
+          </div>
+          <div class="ratio-item">
+            <span class="label">多仓占比:</span>
+            <span class="value long">
+              {(parseFloat(longShortPositionRatio.longAccount) * 100).toFixed(2)}%
+            </span>
+          </div>
+          <div class="ratio-item">
+            <span class="label">空仓占比:</span>
+            <span class="value short">
+              {(parseFloat(longShortPositionRatio.shortAccount) * 100).toFixed(2)}%
+            </span>
+          </div>
+        </div>
+      {:else}
+        <div class="loading">加载中...</div>
+      {/if}
+    </div>
+
+    <div class="ratio-group">
+      <div class="ratio-title">大户账户数多空比</div>
+      {#if longShortAccountRatio}
+        <div class="ratio-content">
+          <div class="ratio-item">
+            <span class="label">多空比:</span>
+            <span class="value {parseFloat(longShortAccountRatio.longShortRatio) > 1 ? 'long' : 'short'}">
+              {parseFloat(longShortAccountRatio.longShortRatio).toFixed(4)}
+            </span>
+          </div>
+          <div class="ratio-item">
+            <span class="label">多仓账户:</span>
+            <span class="value long">
+              {(parseFloat(longShortAccountRatio.longAccount) * 100).toFixed(2)}%
+            </span>
+          </div>
+          <div class="ratio-item">
+            <span class="label">空仓账户:</span>
+            <span class="value short">
+              {(parseFloat(longShortAccountRatio.shortAccount) * 100).toFixed(2)}%
+            </span>
+          </div>
+        </div>
+      {:else}
+        <div class="loading">加载中...</div>
+      {/if}
+    </div>
   </div>
 
   {#if viewMode === 'list'}
@@ -289,6 +405,80 @@
     }
 
     .asks, .bids {
+      width: 100%;
+    }
+  }
+
+  .ratio-data {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .ratio-group {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.75rem;
+  }
+
+  .ratio-title {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  .ratio-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .ratio-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+  }
+
+  .ratio-item .label {
+    color: var(--text-secondary);
+  }
+
+  .ratio-item .value {
+    font-family: monospace;
+    font-weight: 500;
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+  }
+
+  .ratio-item .value.long {
+    color: #26a69a;
+    background: rgba(38, 166, 154, 0.1);
+  }
+
+  .ratio-item .value.short {
+    color: #ef5350;
+    background: rgba(239, 83, 80, 0.1);
+  }
+
+  .loading {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 0.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .ratio-data {
+      flex-direction: column;
+    }
+
+    .ratio-group {
       width: 100%;
     }
   }
