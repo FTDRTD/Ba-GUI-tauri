@@ -1,17 +1,38 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { format } from 'date-fns';
 
-  export let selectedSymbol = 'BTCUSDT';
+  export let selectedSymbol: string;
+  export let key: number = 0;
+
+  const dispatch = createEventDispatcher();
+
   let ws: WebSocket;
   let orderBook: { bids: [number, number][]; asks: [number, number][] } = { bids: [], asks: [] };
   let viewMode = 'list'; // 'list' or 'visual'
   let maxVolume = 0;
 
+  // 监听主题变化
+  let isDarkMode = true;
+  
+  // 更新主题配置
+  function updateThemeConfig() {
+    const isDark = document.documentElement.classList.contains('light-mode') ? false : true;
+    isDarkMode = isDark;
+  }
+
+  // 监听主题变化
   onMount(() => {
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateTheme = () => updateThemeConfig();
+    darkModeMediaQuery.addEventListener('change', updateTheme);
+    updateThemeConfig();
+
     connectWebSocket();
+    loadOrderBook();
     return () => {
       if (ws) ws.close();
+      darkModeMediaQuery.removeEventListener('change', updateTheme);
     };
   });
 
@@ -57,10 +78,21 @@
     viewMode = viewMode === 'list' ? 'visual' : 'list';
   }
 
-  // 监听交易对变化
-  $: {
-    if (selectedSymbol) {
+  // 监听 selectedSymbol 变化
+  $: if (selectedSymbol) {
+    // 当交易对改变时重新加载数据
+    loadOrderBook();
+  }
+
+  async function loadOrderBook() {
+    try {
+      // 加载订单簿数据
       connectWebSocket();
+      
+      // 通知父组件数据已更新
+      dispatch('update');
+    } catch (error) {
+      console.error('加载订单簿数据失败:', error);
     }
   }
 </script>
@@ -124,8 +156,8 @@
 
 <style>
   .order-book {
-    background: #1E222D;
-    color: #DDD;
+    background: var(--panel-bg);
+    color: var(--text-primary);
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -133,28 +165,31 @@
 
   .header {
     padding: 1rem;
-    border-bottom: 1px solid #3F3F5F;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: var(--bg-secondary);
   }
 
   h3 {
     margin: 0;
     font-size: 1.2rem;
+    color: var(--text-primary);
   }
 
   .view-toggle {
     padding: 0.5rem 1rem;
-    background: #2B2B43;
-    border: 1px solid #3F3F5F;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    color: #DDD;
+    color: var(--text-primary);
     cursor: pointer;
+    transition: all 0.2s ease;
   }
 
   .view-toggle:hover {
-    background: #3F3F5F;
+    background: var(--hover-color);
   }
 
   .book-container {
@@ -163,6 +198,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    overflow: auto;
   }
 
   .book-container.list {
@@ -175,18 +211,26 @@
     flex: 1;
   }
 
-  .header {
+  .book-container .header {
     display: flex;
     justify-content: space-between;
     padding: 0.5rem;
-    background: #2B2B43;
+    background: var(--bg-secondary);
     font-weight: bold;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
   }
 
   .row {
     display: flex;
     justify-content: space-between;
     padding: 0.25rem 0.5rem;
+    border-radius: 2px;
+    transition: background-color 0.2s ease;
+  }
+
+  .row:hover {
+    background: var(--hover-color);
   }
 
   .ask {
@@ -220,7 +264,7 @@
     justify-content: space-between;
     padding: 0.25rem 0.5rem;
     border-radius: 2px;
-    transition: width 0.3s ease;
+    transition: all 0.3s ease;
   }
 
   .bar.ask {
@@ -233,5 +277,19 @@
     background: rgba(38, 166, 154, 0.1);
     color: #26a69a;
     margin-right: auto;
+  }
+
+  .bar:hover {
+    filter: brightness(1.1);
+  }
+
+  @media (max-width: 768px) {
+    .book-container.list {
+      flex-direction: column;
+    }
+
+    .asks, .bids {
+      width: 100%;
+    }
   }
 </style> 

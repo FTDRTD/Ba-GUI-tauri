@@ -1,10 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { createChart, ColorType } from 'lightweight-charts';
   import { RSI, MACD, SMA } from 'technicalindicators';
   import { format } from 'date-fns';
 
-  export let selectedSymbol = 'BTCUSDT';
+  export let selectedSymbol: string;
+  export let key: number = 0;
+
+  const dispatch = createEventDispatcher();
 
   let chartContainer: HTMLDivElement;
   let chart: any;
@@ -33,6 +36,57 @@
     height: 500,
   };
 
+  // 监听主题变化
+  let isDarkMode = true;
+  
+  // 更新主题配置
+  function updateThemeConfig() {
+    const isDark = document.documentElement.classList.contains('light-mode') ? false : true;
+    isDarkMode = isDark;
+    
+    const theme = {
+      background: isDark ? '#1E222D' : '#FFFFFF',
+      textColor: isDark ? '#DDD' : '#1A1A1A',
+      gridColor: isDark ? '#2B2B43' : '#E0E0E0',
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderColor: isDark ? '#3F3F5F' : '#E0E0E0',
+      indicatorBg: isDark ? '#2B2B43' : '#F5F5F5'
+    };
+
+    if (chart) {
+      chart.applyOptions({
+        layout: {
+          background: { type: ColorType.Solid, color: theme.background },
+          textColor: theme.textColor,
+        },
+        grid: {
+          vertLines: { color: theme.gridColor },
+          horzLines: { color: theme.gridColor },
+        },
+      });
+
+      // 更新图表容器背景
+      if (chartContainer) {
+        chartContainer.style.background = theme.background;
+      }
+    }
+
+    return theme;
+  }
+
+  // 监听主题变化
+  onMount(() => {
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateTheme = () => updateThemeConfig();
+    darkModeMediaQuery.addEventListener('change', updateTheme);
+    updateThemeConfig();
+
+    return () => {
+      darkModeMediaQuery.removeEventListener('change', updateTheme);
+    };
+  });
+
   // 获取历史数据
   async function fetchHistoricalData() {
     try {
@@ -56,6 +110,9 @@
       // 计算并显示技术指标
       const indicators = calculateIndicators(historicalData);
       displayIndicators(indicators);
+
+      // 通知父组件数据已更新
+      dispatch('update');
     } catch (error) {
       console.error('获取历史数据失败:', error);
     }
@@ -214,101 +271,123 @@
       }
     }
   }
+
+  // 监听 selectedSymbol 变化
+  $: if (selectedSymbol) {
+    // 当交易对改变时重新加载数据
+    fetchHistoricalData();
+  }
 </script>
 
 <div class="trading-chart">
-  <div class="chart-controls">
-    <select bind:value={interval}>
-      <option value="1m">1分钟</option>
-      <option value="5m">5分钟</option>
-      <option value="15m">15分钟</option>
-      <option value="1h">1小时</option>
-      <option value="4h">4小时</option>
-      <option value="1d">1天</option>
-    </select>
+  <div class="chart-header">
+    <div class="chart-controls">
+      <select bind:value={interval}>
+        <option value="1m">1分钟</option>
+        <option value="5m">5分钟</option>
+        <option value="15m">15分钟</option>
+        <option value="1h">1小时</option>
+        <option value="4h">4小时</option>
+        <option value="1d">1天</option>
+      </select>
+    </div>
+    <div class="indicators">
+      <div class="indicator">
+        <h4>RSI (14)</h4>
+        <div class="value {historicalData.length > 0 ? (calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] > 70 ? 'overbought' : calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] < 30 ? 'oversold' : '') : ''}">
+          {historicalData.length > 0 ? calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1].toFixed(2) : '-'}
+        </div>
+      </div>
+      <div class="indicator">
+        <h4>MACD</h4>
+        <div class="macd-values">
+          <div class="value">
+            MACD: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.MACD.toFixed(2) || '-' : '-'}
+          </div>
+          <div class="value">
+            Signal: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.signal.toFixed(2) || '-' : '-'}
+          </div>
+          <div class="value">
+            Hist: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.histogram.toFixed(2) || '-' : '-'}
+          </div>
+        </div>
+      </div>
+      <div class="indicator">
+        <h4>SMA (20)</h4>
+        <div class="value">
+          {historicalData.length > 0 ? calculateIndicators(historicalData).sma[calculateIndicators(historicalData).sma.length - 1].toFixed(2) : '-'}
+        </div>
+      </div>
+    </div>
   </div>
   <div bind:this={chartContainer} class="chart-container"></div>
-  <div class="indicators">
-    <div class="indicator">
-      <h4>RSI (14)</h4>
-      <div class="value {historicalData.length > 0 ? (calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] > 70 ? 'overbought' : calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] < 30 ? 'oversold' : '') : ''}">
-        {historicalData.length > 0 ? calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1].toFixed(2) : '-'}
-      </div>
-    </div>
-    <div class="indicator">
-      <h4>MACD</h4>
-      <div class="macd-values">
-        <div class="value">
-          MACD: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1].MACD.toFixed(2) : '-'}
-        </div>
-        <div class="value">
-          Signal: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1].signal.toFixed(2) : '-'}
-        </div>
-        <div class="value">
-          Hist: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1].histogram.toFixed(2) : '-'}
-        </div>
-      </div>
-    </div>
-    <div class="indicator">
-      <h4>SMA (20)</h4>
-      <div class="value">
-        {historicalData.length > 0 ? calculateIndicators(historicalData).sma[calculateIndicators(historicalData).sma.length - 1].toFixed(2) : '-'}
-      </div>
-    </div>
-  </div>
 </div>
 
 <style>
   .trading-chart {
     width: 100%;
     height: 100%;
-    background: #1E222D;
-    padding: 1rem;
+    background: var(--panel-bg);
+    color: var(--text-primary);
     display: flex;
     flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
   }
 
   .chart-controls {
     display: flex;
     gap: 1rem;
-    margin-bottom: 1rem;
   }
 
   .chart-controls select {
     padding: 0.5rem;
-    background: #2B2B43;
-    color: #DDD;
-    border: 1px solid #3F3F5F;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
+    font-size: 0.9rem;
   }
 
   .chart-container {
-    width: 100%;
-    height: calc(100% - 8rem);
+    flex: 1;
+    min-height: 0;
+    border-radius: 4px;
+    overflow: hidden;
   }
 
   .indicators {
     display: flex;
     gap: 2rem;
-    padding: 1rem;
-    background: #2B2B43;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
     border-radius: 4px;
-    margin-top: 1rem;
+    border: 1px solid var(--border-color);
   }
 
   .indicator {
-    flex: 1;
+    min-width: 120px;
   }
 
   h4 {
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
-    color: #888;
+    color: var(--text-secondary);
   }
 
   .value {
     font-family: monospace;
     font-size: 1.1rem;
+    color: var(--text-primary);
   }
 
   .value.overbought {
@@ -327,5 +406,20 @@
 
   .macd-values .value {
     font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    .chart-header {
+      flex-direction: column;
+    }
+
+    .indicators {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .indicator {
+      min-width: auto;
+    }
   }
 </style> 
