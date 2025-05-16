@@ -32,27 +32,42 @@
   // 更新主题变量
   function updateThemeVariables(isDark: boolean) {
     const root = document.documentElement;
-    if (isDark) {
-      root.style.setProperty('--bg-primary', '#0A0E17');
-      root.style.setProperty('--bg-secondary', '#1A1F2E');
-      root.style.setProperty('--border-color', '#2A2F3E');
-      root.style.setProperty('--text-primary', '#E5E5E5');
-      root.style.setProperty('--text-secondary', '#9E9E9E');
-      root.style.setProperty('--accent-color', '#2962FF');
-      root.style.setProperty('--hover-color', '#3A3F4E');
-      root.style.setProperty('--success-color', '#1B5E20');
-      root.style.setProperty('--panel-bg', '#1A1F2E');
-    } else {
-      root.style.setProperty('--bg-primary', '#FFFFFF');
-      root.style.setProperty('--bg-secondary', '#F5F5F5');
-      root.style.setProperty('--border-color', '#E0E0E0');
-      root.style.setProperty('--text-primary', '#1A1A1A');
-      root.style.setProperty('--text-secondary', '#666666');
-      root.style.setProperty('--accent-color', '#1976D2');
-      root.style.setProperty('--hover-color', '#E8E8E8');
-      root.style.setProperty('--success-color', '#2E7D32');
-      root.style.setProperty('--panel-bg', '#FFFFFF');
-    }
+    const darkTheme = {
+      '--bg-primary': '#0F172A',
+      '--bg-secondary': '#1E293B',
+      '--border-color': '#334155',
+      '--text-primary': '#F8FAFC',
+      '--text-secondary': '#94A3B8',
+      '--accent-color': '#3B82F6',
+      '--hover-color': '#475569',
+      '--success-color': '#22C55E',
+      '--panel-bg': '#1E293B',
+      '--panel-header-bg': '#0F172A',
+      '--shadow-sm': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+      '--shadow-md': '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+      '--shadow-lg': '0 10px 15px -3px rgb(0 0 0 / 0.1)'
+    };
+    
+    const lightTheme = {
+      '--bg-primary': '#F8FAFC',
+      '--bg-secondary': '#F1F5F9',
+      '--border-color': '#E2E8F0',
+      '--text-primary': '#0F172A',
+      '--text-secondary': '#475569',
+      '--accent-color': '#2563EB',
+      '--hover-color': '#E2E8F0',
+      '--success-color': '#16A34A',
+      '--panel-bg': '#FFFFFF',
+      '--panel-header-bg': '#F8FAFC',
+      '--shadow-sm': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+      '--shadow-md': '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+      '--shadow-lg': '0 10px 15px -3px rgb(0 0 0 / 0.1)'
+    };
+
+    const theme = isDark ? darkTheme : lightTheme;
+    Object.entries(theme).forEach(([key, value]) => {
+      root.style.setProperty(key, value);
+    });
   }
 
   // 处理交易对选择
@@ -230,101 +245,158 @@
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
   header {
-    padding: 0.75rem 1.5rem;
-    background: var(--bg-secondary);
+    padding: 1rem 1.5rem;
+    background: var(--panel-header-bg);
     border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .header-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    max-width: 1920px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .header-content h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--accent-color), #60A5FA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
   }
 
   .header-controls {
     display: flex;
-    gap: 1rem;
+    gap: 1.5rem;
     align-items: center;
   }
 
   .status-indicator {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
     font-size: 0.875rem;
+    font-weight: 500;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    color: var(--text-primary);
+    transition: all 0.2s ease;
   }
 
   .status-indicator.connected {
-    background: var(--success-color);
-    border-color: var(--success-color);
-    color: white;
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.2);
+    color: #22C55E;
+  }
+
+  .status-indicator.connected::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22C55E;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
   }
 
   .last-update {
     font-size: 0.875rem;
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
+  .last-update::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    opacity: 0.5;
   }
 
   main {
     flex: 1;
     display: flex;
-    gap: 0.5rem;
-    padding: 0.5rem;
     overflow: hidden;
     position: relative;
     background: var(--bg-primary);
   }
 
   .left-panel, .right-panel {
-    position: relative;
     background: var(--panel-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden;
-    transition: width 0.2s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-md);
+    z-index: 5;
   }
 
   .center-panel {
     flex: 1;
     min-width: 0;
-    background: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden;
+    background: var(--bg-primary);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
   }
 
   .collapse-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    width: 20px;
-    height: 40px;
-    background: var(--bg-secondary);
+    width: 24px;
+    height: 48px;
+    background: var(--panel-bg);
     border: 1px solid var(--border-color);
-    color: var(--text-primary);
+    border-radius: 0 4px 4px 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0 4px 4px 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    z-index: 5;
     transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
   }
 
   .collapse-btn:hover {
     background: var(--hover-color);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-md);
   }
 
   .resize-handle {
@@ -333,8 +405,8 @@
     bottom: 0;
     width: 4px;
     cursor: col-resize;
-    background: transparent;
-    transition: background-color 0.2s;
+    z-index: 4;
+    transition: background-color 0.2s ease;
   }
 
   .left-panel .resize-handle {
@@ -346,23 +418,61 @@
   }
 
   .resize-handle:hover {
+    background: var(--accent-color);
+    opacity: 0.5;
+  }
+
+  /* 添加滚动条样式 */
+  :global(::-webkit-scrollbar) {
+    width: 8px;
+    height: 8px;
+  }
+
+  :global(::-webkit-scrollbar-track) {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+  }
+
+  :global(::-webkit-scrollbar-thumb) {
+    background: var(--border-color);
+    border-radius: 4px;
+    border: 2px solid var(--bg-secondary);
+  }
+
+  :global(::-webkit-scrollbar-thumb:hover) {
     background: var(--hover-color);
   }
 
-  @media (max-width: 1200px) {
-    .left-panel, .right-panel {
-      width: 250px !important;
+  /* 响应式设计 */
+  @media (max-width: 1024px) {
+    .header-content {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .header-controls {
+      width: 100%;
+      justify-content: space-between;
     }
   }
 
   @media (max-width: 768px) {
-    main {
-      flex-direction: column;
+    header {
+      padding: 0.75rem 1rem;
     }
-    
-    .left-panel, .right-panel, .center-panel {
-      width: 100% !important;
-      height: 300px;
+
+    .header-content h1 {
+      font-size: 1.25rem;
+    }
+
+    .status-indicator {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+
+    .last-update {
+      font-size: 0.8125rem;
     }
   }
 </style>

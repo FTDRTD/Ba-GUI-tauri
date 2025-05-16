@@ -573,14 +573,23 @@
       <div class="indicator-group">
         <div class="indicator">
           <h4>RSI (14)</h4>
-          <div class="value {historicalData.length > 0 ? (calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] > 70 ? 'overbought' : calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1] < 30 ? 'oversold' : '') : ''}">
-            {historicalData.length > 0 ? calculateIndicators(historicalData).rsi[calculateIndicators(historicalData).rsi.length - 1].toFixed(2) : '-'}
+          <div class="value {historicalData.length > 0 && calculateIndicators(historicalData)?.rsi?.[calculateIndicators(historicalData)?.rsi?.length - 1] > 70 ? 'overbought' : 
+            historicalData.length > 0 && calculateIndicators(historicalData)?.rsi?.[calculateIndicators(historicalData)?.rsi?.length - 1] < 30 ? 'oversold' : ''}">
+            {#if historicalData.length > 0 && calculateIndicators(historicalData)?.rsi}
+              {calculateIndicators(historicalData)?.rsi[calculateIndicators(historicalData)?.rsi.length - 1]?.toFixed(2) ?? '-'}
+            {:else}
+              -
+            {/if}
           </div>
         </div>
         <div class="indicator">
           <h4>SMA (20)</h4>
           <div class="value">
-            {historicalData.length > 0 ? calculateIndicators(historicalData).sma[calculateIndicators(historicalData).sma.length - 1].toFixed(2) : '-'}
+            {#if historicalData.length > 0 && calculateIndicators(historicalData)?.sma}
+              {calculateIndicators(historicalData)?.sma[calculateIndicators(historicalData)?.sma.length - 1]?.toFixed(2) ?? '-'}
+            {:else}
+              -
+            {/if}
           </div>
         </div>
       </div>
@@ -589,13 +598,25 @@
           <h4>MACD</h4>
           <div class="macd-values">
             <div class="value">
-              MACD: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.MACD.toFixed(2) || '-' : '-'}
+              MACD: {#if historicalData.length > 0 && calculateIndicators(historicalData)?.macd}
+                {calculateIndicators(historicalData)?.macd[calculateIndicators(historicalData)?.macd.length - 1]?.MACD?.toFixed(2) ?? '-'}
+              {:else}
+                -
+              {/if}
             </div>
             <div class="value">
-              Signal: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.signal.toFixed(2) || '-' : '-'}
+              Signal: {#if historicalData.length > 0 && calculateIndicators(historicalData)?.macd}
+                {calculateIndicators(historicalData)?.macd[calculateIndicators(historicalData)?.macd.length - 1]?.signal?.toFixed(2) ?? '-'}
+              {:else}
+                -
+              {/if}
             </div>
             <div class="value">
-              Hist: {historicalData.length > 0 ? calculateIndicators(historicalData).macd[calculateIndicators(historicalData).macd.length - 1]?.histogram.toFixed(2) || '-' : '-'}
+              Hist: {#if historicalData.length > 0 && calculateIndicators(historicalData)?.macd}
+                {calculateIndicators(historicalData)?.macd[calculateIndicators(historicalData)?.macd.length - 1]?.histogram?.toFixed(2) ?? '-'}
+              {:else}
+                -
+              {/if}
             </div>
           </div>
         </div>
@@ -614,14 +635,19 @@
     flex-direction: column;
     padding: 1rem;
     gap: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   .chart-header {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: center;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
   }
 
   .chart-controls {
@@ -632,26 +658,53 @@
 
   .toggle-chart {
     padding: 0.5rem 1rem;
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
+    font-weight: 500;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .toggle-chart:hover {
     background: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .toggle-chart:active {
+    transform: translateY(0);
   }
 
   .chart-controls select {
-    padding: 0.5rem;
-    background: var(--bg-secondary);
+    padding: 0.5rem 2rem 0.5rem 1rem;
+    background: var(--bg-primary);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.9rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+    transition: all 0.2s ease;
+  }
+
+  .chart-controls select:hover {
+    border-color: var(--accent-color);
+  }
+
+  .chart-controls select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
   }
 
   .chart-main {
@@ -665,10 +718,11 @@
   .chart-container {
     flex: 1;
     min-height: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
     border: 1px solid var(--border-color);
-    transition: flex 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--bg-primary);
   }
 
   .chart-container.collapsed {
@@ -683,9 +737,9 @@
   .indicators {
     display: flex;
     gap: 1rem;
-    padding: 0.75rem;
+    padding: 1rem;
     background: var(--bg-secondary);
-    border-radius: 4px;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
   }
 
@@ -709,26 +763,30 @@
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
     color: var(--text-secondary);
+    font-weight: 500;
   }
 
   .value {
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 1.1rem;
     color: var(--text-primary);
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 0.75rem;
     background: var(--bg-primary);
     border-radius: 4px;
     border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
   }
 
   .value.overbought {
     color: #ef5350;
     border-color: #ef5350;
+    background: rgba(239, 83, 80, 0.1);
   }
 
   .value.oversold {
     color: #26a69a;
     border-color: #26a69a;
+    background: rgba(38, 166, 154, 0.1);
   }
 
   .macd-values {
@@ -748,6 +806,11 @@
     }
 
     .toggle-chart {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .chart-controls select {
       width: 100%;
     }
 

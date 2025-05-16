@@ -343,12 +343,14 @@
 
 <style>
   .trading-pairs {
+    background: var(--panel-bg);
+    color: var(--text-primary);
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--panel-bg);
-    color: var(--text-primary);
-    transition: all 0.3s ease;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
   }
 
   .trading-pairs.collapsed {
@@ -356,17 +358,18 @@
   }
 
   .header {
-    padding: 0.5rem;
+    padding: 1rem;
     border-bottom: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: 8px 8px 0 0;
   }
 
   .header-main {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.5rem;
+    gap: 1rem;
+    margin-bottom: 1rem;
   }
 
   .collapse-btn {
@@ -396,49 +399,87 @@
 
   .search-input {
     width: 100%;
-    padding: 0.5rem 2rem 0.5rem 1rem;
-    background: var(--bg-secondary);
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 6px;
     color: var(--text-primary);
     font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+
+  .search-input::placeholder {
+    color: var(--text-secondary);
   }
 
   .clear-search {
     position: absolute;
-    right: 0.5rem;
+    right: 0.75rem;
     background: none;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
     padding: 0.25rem;
     font-size: 1.2rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+  }
+
+  .clear-search:hover {
+    background: var(--hover-color);
+    color: var(--text-primary);
   }
 
   .controls {
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   .type-filter {
     display: flex;
     gap: 0.25rem;
+    background: var(--bg-primary);
+    padding: 0.25rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
   }
 
   button {
     padding: 0.5rem 1rem;
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 6px;
     color: var(--text-primary);
     cursor: pointer;
     font-size: 0.9rem;
+    font-weight: 500;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   button:hover {
     background: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  button:active {
+    transform: translateY(0);
   }
 
   button.active {
@@ -463,17 +504,17 @@
   .pairs-container {
     flex: 1;
     overflow-y: auto;
-    padding: 0.5rem;
+    padding: 0.75rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
   .pair-item {
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 0.75rem;
+    border-radius: 6px;
+    padding: 1rem;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
@@ -482,6 +523,11 @@
   .pair-item:hover {
     background: var(--hover-color);
     transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .pair-item:active {
+    transform: translateY(0);
   }
 
   .pair-item.selected {
@@ -499,25 +545,26 @@
   }
 
   .pair-item.favorite {
-    background: var(--bg-primary);
+    background: var(--bg-secondary);
   }
 
   .pair-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 
   .pair-name {
     font-weight: 500;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.375rem;
   }
 
   .base {
     font-size: 1.1rem;
+    letter-spacing: -0.5px;
   }
 
   .quote {
@@ -527,18 +574,19 @@
 
   .type {
     font-size: 0.7rem;
-    padding: 0.1rem 0.3rem;
-    border-radius: 2px;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
     margin-left: 0.5rem;
+    font-weight: 500;
   }
 
   .type.spot {
-    background: rgba(38, 166, 154, 0.2);
+    background: rgba(38, 166, 154, 0.1);
     color: #26a69a;
   }
 
   .type.futures {
-    background: rgba(239, 83, 80, 0.2);
+    background: rgba(239, 83, 80, 0.1);
     color: #ef5350;
   }
 
@@ -560,47 +608,70 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 
   .price {
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 1.1rem;
+    letter-spacing: -0.5px;
   }
 
   .change {
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
   }
 
   .change.up {
     color: #26a69a;
+    background: rgba(38, 166, 154, 0.1);
   }
 
   .change.down {
     color: #ef5350;
+    background: rgba(239, 83, 80, 0.1);
   }
 
   .pair-volume {
     font-size: 0.8rem;
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .pair-volume::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    opacity: 0.5;
   }
 
   .selected-indicator {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: 0.75rem;
+    right: 0.75rem;
     background: var(--accent-color);
     color: white;
-    padding: 0.1rem 0.3rem;
-    border-radius: 2px;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
     font-size: 0.7rem;
+    font-weight: 500;
   }
 
   .loading, .error {
-    padding: 1rem;
+    padding: 2rem;
     text-align: center;
     color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
   }
 
   .error {
@@ -613,13 +684,18 @@
       align-items: stretch;
     }
 
-    .collapse-btn {
+    .controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .type-filter {
       width: 100%;
       justify-content: center;
     }
 
-    .controls {
-      flex-wrap: wrap;
+    .search-input {
+      font-size: 1rem;
     }
   }
 </style> 
